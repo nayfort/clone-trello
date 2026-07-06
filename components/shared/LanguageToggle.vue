@@ -1,6 +1,6 @@
-<script setup>
+<script setup lang="ts">
 const { locale, setLocale } = useI18n();
-const locales = ['en', 'uk'];
+const locales = ['en', 'uk'] as const;
 </script>
 
 <template>

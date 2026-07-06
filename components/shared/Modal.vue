@@ -2,6 +2,7 @@
 import {
 	Dialog,
 	DialogContent,
+	DialogDescription,
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
@@ -10,6 +11,7 @@ import {
 const props = defineProps({
 	title: { type: String, default: '' },
 	locked: { type: Boolean, default: false },
+	triggerLabel: { type: String, default: '' },
 });
 
 const isOpen = ref(false);
@@ -23,12 +25,15 @@ const closeDialog = () => {
 
 <template>
 	<Dialog v-model:open="isOpen">
-		<DialogTrigger class="w-full flex justify-end">
+		<DialogTrigger
+			class="w-full flex justify-end"
+			:aria-label="triggerLabel || undefined"
+		>
 			<slot name="trigger" />
 		</DialogTrigger>
 		<DialogContent>
 			<DialogHeader>
-				<DialogTitle>{{ $t(title) }}:</DialogTitle>
+				<DialogTitle>{{ title }}</DialogTitle>
 				<slot name="header" />
 			</DialogHeader>
 			<DialogDescription>

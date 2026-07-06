@@ -8,32 +8,41 @@ import {
 	SelectValue,
 } from '@/components/ui/select';
 import { Icon } from '@iconify/vue';
-import { ref, watch, defineProps, defineEmits } from 'vue';
 
 const props = defineProps<{
 	placeholder: string;
-	options: string[];
+	options: readonly string[];
+	modelValue?: string;
 	value?: string;
 }>();
 
-const selectedItem = ref(props.value || '');
+const emit = defineEmits<{
+	'onChange': [value: string];
+	'update:modelValue': [value: string];
+}>();
 
-const emit = defineEmits(['onChange']);
+const internalValue = ref(props.modelValue ?? props.value ?? '');
 
 watch(
-	() => props.value,
+	() => [props.modelValue, props.value],
 	(newValue) => {
-		selectedItem.value = newValue || '';
+		internalValue.value = newValue.find((value) => value !== undefined) ?? '';
 	}
 );
 
-watch(selectedItem, (value) => {
-	emit('onChange', value);
+const selectedItem = computed({
+	get() {
+		return props.modelValue ?? props.value ?? internalValue.value;
+	},
+	set(value: string) {
+		internalValue.value = value;
+		emit('update:modelValue', value);
+		emit('onChange', value);
+	},
 });
 
 const resetSelection = () => {
 	selectedItem.value = '';
-	emit('onChange', selectedItem.value);
 };
 </script>
 

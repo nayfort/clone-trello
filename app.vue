@@ -11,8 +11,5 @@ useHead({
 });
 
 const dashboardStore = useProjectsStore();
-
-onMounted(() => {
-	dashboardStore.init();
-});
+dashboardStore.init();
 </script>

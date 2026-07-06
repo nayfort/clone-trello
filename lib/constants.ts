@@ -1,4 +1,6 @@
-export const PriorityOptions = ['low', 'medium', 'high'];
+import { Priority } from '~/stores/useProjectsStore';
+
+export const PriorityOptions = [Priority.Low, Priority.Medium, Priority.High];
 export const performerList = [
 	'John Frost',
 	'Jeff Miller',

@@ -3,6 +3,7 @@ import { nanoid } from 'nanoid';
 
 export interface Task {
 	id: string;
+	name: string;
 	status: string;
 	performer: string;
 	responsiblePerson: string;
@@ -25,41 +26,53 @@ export enum Priority {
 	High = 'high',
 }
 
-export const useProjectsStore = defineStore({
-	id: 'projects-store',
+const defaultSectionStatuses = ['TODO', 'In progress', 'Done'];
+
+const createDefaultDashboard = (): Section[] =>
+	defaultSectionStatuses.map((status) => ({
+		status,
+		tasks: [],
+	}));
+
+const createProject = (name: string): Project => ({
+	id: nanoid(),
+	name,
+	dashboard: createDefaultDashboard(),
+});
+
+export const useProjectsStore = defineStore('projects-store', {
 	state: () => ({
 		projects: [] as Project[],
 	}),
 	actions: {
 		init() {
-			const initProject: Project = {
-				id: nanoid(),
-				name: 'Test project',
-				dashboard: [
-					{ status: 'TODO', tasks: [] },
-					{ status: 'In progress', tasks: [] },
-					{ status: 'Done', tasks: [] },
-				],
-			};
-
-			if (this.projects.length === 0) {
-				this.projects.push(initProject);
+			if (this.projects.length > 0) {
+				return;
 			}
+
+			this.projects.push(createProject('Test project'));
 		},
 		addProject(name: string) {
-			const newProject: Project = {
-				id: nanoid(),
-				name,
-				dashboard: [
-					{ status: 'TODO', tasks: [] },
-					{ status: 'In progress', tasks: [] },
-					{ status: 'Done', tasks: [] },
-				],
-			};
-			this.projects.push(newProject);
+			const trimmedName = name.trim();
+
+			if (!trimmedName) {
+				return;
+			}
+
+			this.projects.push(createProject(trimmedName));
 		},
 		getProject(id: string): Project | undefined {
 			return this.projects.find((project) => project.id === id);
+		},
+		updateProjectName(id: string, name: string) {
+			const trimmedName = name.trim();
+			const project = this.projects.find((project) => project.id === id);
+
+			if (!project || !trimmedName) {
+				return;
+			}
+
+			project.name = trimmedName;
 		},
 		deleteProject(id: string) {
 			const filteredProjects = this.projects.filter(
@@ -109,28 +122,20 @@ export const useProjectsStore = defineStore({
 				}
 			}
 		},
-		moveTask(projectId: string, taskId: string, toStatus: string) {
-			const projectIndex = this.projects.findIndex((p) => p.id === projectId);
-			if (projectIndex !== -1) {
-				const fromSection = this.projects[projectIndex].dashboard.find((s) =>
-					s.tasks.some((t) => t.id === taskId)
-				);
-				const toSection = this.projects[projectIndex].dashboard.find(
-					(s) => s.status === toStatus
-				);
-				if (fromSection && toSection) {
-					const taskIndex = fromSection.tasks.findIndex((t) => t.id === taskId);
-					if (taskIndex !== -1) {
-						const [task] = fromSection.tasks.splice(taskIndex, 1);
-						task.status = toStatus;
-						toSection.tasks.push(task);
-						this.projects[projectIndex] = {
-							...this.projects[projectIndex],
-							dashboard: [...this.projects[projectIndex].dashboard],
-						};
-					}
-				}
+		setSectionTasks(projectId: string, status: string, tasks: Task[]) {
+			const project = this.projects.find((project) => project.id === projectId);
+			const section = project?.dashboard.find(
+				(section) => section.status === status
+			);
+
+			if (!section) {
+				return;
 			}
+
+			section.tasks = tasks.map((task) => ({
+				...task,
+				status,
+			}));
 		},
 		deleteTask({
 			projectId,

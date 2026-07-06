@@ -5,13 +5,11 @@
 		<h2 class="text-lg font-bold mb-3">{{ section.status }}</h2>
 
 		<draggable
-			v-model="section.tasks"
+			v-model="tasks"
 			:group="{ name: 'tasks', pull: true, put: true }"
 			tag="ul"
 			class="space-y-2"
 			item-key="id"
-			@end="onEnd"
-			:data-status="section.status"
 			:animation="300"
 		>
 			<template #item="{ element }">
@@ -27,7 +25,11 @@
 		</draggable>
 
 		<div class="flex justify-end mt-5">
-			<SharedModal :title="$t('ADD_TASK')" :locked="isLocked">
+			<SharedModal
+				:title="$t('ADD_TASK')"
+				:locked="isLocked"
+				:trigger-label="$t('ADD_TASK')"
+			>
 				<template #trigger>
 					<Icon
 						icon="mdi:add"
@@ -50,17 +52,17 @@
 						<SharedSelect
 							:placeholder="$t('SELECT_RESPONSIBLE_PERSON')"
 							:options="responsiblePersonList"
-							@onChange="selectResponsiblePerson"
+							v-model="task.responsiblePerson"
 						/>
 						<SharedSelect
 							:placeholder="$t('SELECT_PERFORMER')"
 							:options="performerList"
-							@onChange="selectPerformer"
+							v-model="task.performer"
 						/>
 						<SharedSelect
 							:placeholder="$t('SELECT_PRIORITY')"
 							:options="PriorityOptions"
-							@onChange="selectPriority"
+							v-model="selectedPriority"
 						/>
 					</div>
 				</template>
@@ -72,21 +74,34 @@
 	</section>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import draggable from 'vuedraggable';
 import { Icon } from '@iconify/vue';
 import { nanoid } from 'nanoid';
-import { Priority, useProjectsStore } from '~/stores/useProjectsStore';
+import {
+	Priority,
+	useProjectsStore,
+	type Section,
+	type Task,
+} from '~/stores/useProjectsStore';
 import {
 	PriorityOptions,
 	performerList,
 	responsiblePersonList,
 } from '~/lib/constants';
 
-const props = defineProps({
-	section: Object,
-	projectId: String,
-});
+interface TaskFormState {
+	name: string;
+	description: string;
+	performer: string;
+	responsiblePerson: string;
+	priority: Priority;
+}
+
+const props = defineProps<{
+	section: Section;
+	projectId: string;
+}>();
 
 const projectStore = useProjectsStore();
 
@@ -97,61 +112,66 @@ const errors = ref({
 
 const isLocked = computed(() => {
 	return errors.value.name || errors.value.description;
-})
+});
 
-const task = ref({
+const createEmptyTask = (): TaskFormState => ({
 	name: '',
 	description: '',
 	performer: '',
+	responsiblePerson: '',
 	priority: Priority.Low,
 });
 
+const task = ref<TaskFormState>(createEmptyTask());
+
+const tasks = computed<Task[]>({
+	get() {
+		return props.section.tasks;
+	},
+	set(value) {
+		projectStore.setSectionTasks(props.projectId, props.section.status, value);
+	},
+});
+
+const selectedPriority = computed({
+	get() {
+		return task.value.priority;
+	},
+	set(priority: string) {
+		task.value.priority = priority as Priority;
+	},
+});
+
 const addTask = () => {
-	if (!task.value.name) {
+	const name = task.value.name.trim();
+	const description = task.value.description.trim();
+
+	if (!name) {
 		errors.value.name = true;
-		return;
 	} else {
 		errors.value.name = false;
 	}
-	if (!task.value.description) {
+
+	if (!description) {
 		errors.value.description = true;
-		return;
 	} else {
 		errors.value.description = false;
 	}
+
+	if (errors.value.name || errors.value.description) {
+		return;
+	}
+
 	projectStore.addTask(props.projectId, props.section.status, {
 		id: nanoid(),
-		name: task.value.name,
+		name,
 		responsiblePerson: task.value.responsiblePerson,
 		performer: task.value.performer,
-		description: task.value.description,
+		description,
 		priority: task.value.priority,
 		status: props.section.status,
 	});
 
-	task.value = {
-		name: '',
-		description: '',
-		performer: '',
-		priority: Priority.Low,
-	};
-};
-
-const selectResponsiblePerson = (responsiblePerson) => {
-	task.value.responsiblePerson = responsiblePerson;
-};
-const selectPerformer = (performer) => {
-	task.value.performer = performer;
-};
-const selectPriority = (priority) => {
-	task.value.priority = priority;
-};
-
-const onEnd = (event) => {
-	const { to, item } = event;
-	const toStatus = to.dataset.status;
-	const taskId = item.dataset.id;
-
-	projectStore.moveTask(props.projectId, taskId, toStatus);
+	task.value = createEmptyTask();
 };
 </script>

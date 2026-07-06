@@ -11,42 +11,95 @@
 			{{ project.name }}
 		</NuxtLink>
 		<div
-			class="flex items-center gap-3"
+			class="flex items-center gap-1"
 			:class="editProjectName ? 'w-full' : ''"
 		>
-			<Icon
-				icon="mdi:rename"
+			<Button
 				v-if="!editProjectName"
-				@click="editProjectName = true"
-			/>
+				type="button"
+				variant="ghost"
+				size="icon"
+				:aria-label="$t('EDIT')"
+				@click="startProjectNameEdit"
+			>
+				<Icon icon="mdi:rename" />
+			</Button>
 			<div
 				class="flex items-center justify-between gap-2 w-full"
 				v-if="editProjectName"
 			>
-				<Input v-model="project.name" type="text" class="h-6" />
-				<Icon
-					icon="mdi:content-save"
-					@click="editProjectName = false"
+				<Input
+					v-model="projectNameDraft"
+					type="text"
+					class="h-6"
+					@keydown.enter.prevent="saveProjectName"
+					@keydown.esc.prevent="cancelProjectNameEdit"
 				/>
+				<Button
+					type="button"
+					variant="ghost"
+					size="icon"
+					:aria-label="$t('SAVE')"
+					@click="saveProjectName"
+				>
+					<Icon icon="mdi:content-save" />
+				</Button>
 			</div>
-			<Icon
-				icon="mdi:delete"
+			<Button
+				type="button"
+				variant="ghost"
+				size="icon"
+				:aria-label="$t('REMOVE')"
 				@click="dashboardStore.deleteProject(project.id)"
-			/>
+			>
+				<Icon icon="mdi:delete" />
+			</Button>
 		</div>
 	</li>
 </template>
 
 <script lang="ts" setup>
 import { Icon } from '@iconify/vue';
+import type { Project } from '~/stores/useProjectsStore';
+
 const editProjectName = ref(false);
-const localePath = useLocalePath()
+const localePath = useLocalePath();
 
 const dashboardStore = useProjectsStore();
-defineProps({
-	project: {
-		type: Object,
-		required: true,
-	},
-});
+const props = defineProps<{
+	project: Project;
+}>();
+
+const projectNameDraft = ref(props.project.name);
+
+watch(
+	() => props.project.name,
+	(name) => {
+		if (!editProjectName.value) {
+			projectNameDraft.value = name;
+		}
+	}
+);
+
+const startProjectNameEdit = () => {
+	projectNameDraft.value = props.project.name;
+	editProjectName.value = true;
+};
+
+const cancelProjectNameEdit = () => {
+	projectNameDraft.value = props.project.name;
+	editProjectName.value = false;
+};
+
+const saveProjectName = () => {
+	const trimmedName = projectNameDraft.value.trim();
+
+	if (!trimmedName) {
+		cancelProjectNameEdit();
+		return;
+	}
+
+	dashboardStore.updateProjectName(props.project.id, trimmedName);
+	editProjectName.value = false;
+};
 </script>
